@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/IWOMR.API/IWOMR.API.csproj" />
+    <Project Path="src/IWOMR.Application/IWOMR.Application.csproj" />
+    <Project Path="src/IWOMR.Domain/IWOMR.Domain.csproj" />
+    <Project Path="src/IWOMR.Infrastructure/IWOMR.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/IWOMR.Integration/IWOMR.Integration.csproj" />
+    <Project Path="tests/IWOMR.Unit/IWOMR.Unit.csproj" />
+  </Folder>
+</Solution>
