@@ -1,0 +1,46 @@
+# ========================
+# ASP.NET Core / C#
+# ========================
+backend/.vs/
+backend/**/bin/
+backend/**/obj/
+backend/**/*.user
+backend/**/*.suo
+backend/**/appsettings.Development.json
+backend/**/appsettings.Local.json
+
+# ========================
+# React Native / Node
+# ========================
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/*.jks
+mobile/*.p8
+mobile/*.p12
+mobile/*.key
+mobile/*.mobileprovision
+mobile/android/
+mobile/ios/
+mobile/.env
+
+# ========================
+# Infra / secrets
+# ========================
+infra/.env
+**/.env
+!**/.env.example
+
+# ========================
+# OS
+# ========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========================
+# Editors
+# ========================
+.idea/
+*.iml
+
