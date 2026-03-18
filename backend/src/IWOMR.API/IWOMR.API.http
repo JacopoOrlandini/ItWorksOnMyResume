@@ -1,6 +1,0 @@
-@IWOMR.API_HostAddress = http://localhost:5097
-
-GET {{IWOMR.API_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
