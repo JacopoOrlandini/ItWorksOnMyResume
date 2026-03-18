@@ -1,0 +1,160 @@
+version: "3.9"
+
+# ItWorksOnMyResume — local self-hosted stack
+# Usage: docker compose up -d
+# All data persisted in named volumes, survives container restarts
+
+services:
+
+  # ─────────────────────────────────────────
+  # PostgreSQL 16 + PostGIS (geo queries)
+  # ─────────────────────────────────────────
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: iwomr-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # Redis 7 — cache + SignalR backplane
+  # ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: iwomr-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # MinIO — S3-compatible object storage
+  # Replaces: Azure Blob Storage
+  # Console UI: http://localhost:9001
+  # ─────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: iwomr-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - miniodata:/data
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # MinIO bucket bootstrap (runs once then exits)
+  minio-setup:
+    image: minio/mc:latest
+    container_name: iwomr-minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: /bin/sh /setup.sh
+    volumes:
+      - ./minio/setup.sh:/setup.sh:ro
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+
+  # ─────────────────────────────────────────
+  # ntfy — self-hosted push notifications
+  # Replaces: Firebase / Azure Notification Hubs
+  # UI: http://localhost:8090
+  # ─────────────────────────────────────────
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: iwomr-ntfy
+    restart: unless-stopped
+    command: serve
+    environment:
+      NTFY_BASE_URL: http://localhost:8090
+      NTFY_CACHE_FILE: /var/cache/ntfy/cache.db
+      NTFY_AUTH_FILE: /var/cache/ntfy/auth.db
+      NTFY_AUTH_DEFAULT_ACCESS: deny-all
+    volumes:
+      - ntfydata:/var/cache/ntfy
+      - ./ntfy/server.yml:/etc/ntfy/server.yml:ro
+    ports:
+      - "8090:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 http://localhost:80/v1/health -O - | grep -c ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ─────────────────────────────────────────
+  # Seq — structured log viewer (Serilog sink)
+  # Replaces: Azure Application Insights
+  # UI: http://localhost:5341
+  # ─────────────────────────────────────────
+  seq:
+    image: datalust/seq:latest
+    container_name: iwomr-seq
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: Y
+      SEQ_FIRSTRUN_ADMINPASSWORD: ${SEQ_ADMIN_PASSWORD}
+    volumes:
+      - seqdata:/data
+    ports:
+      - "5341:80"    # web UI + ingestion
+
+  # ─────────────────────────────────────────
+  # Nginx — reverse proxy + SSL termination
+  # Sits in front of the ASP.NET Core API
+  # ─────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: iwomr-nginx
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    # Note: the ASP.NET Core API runs on the host (dotnet run),
+    # not as a Docker container during development.
+    # In production, add an 'api' service here pointing to the backend Dockerfile.
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  ntfydata:
+  seqdata:

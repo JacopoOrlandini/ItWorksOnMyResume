@@ -1,0 +1,29 @@
+# ItWorksOnMyResume — ntfy server configuration
+# File: infra/ntfy/server.yml
+# Docs: https://docs.ntfy.sh/config/
+
+# Base URL — update to your local machine IP if accessing from phone
+base-url: "http://localhost:8090"
+
+# Storage
+cache-file: "/var/cache/ntfy/cache.db"
+auth-file:  "/var/cache/ntfy/auth.db"
+
+# Cache messages for 12h (useful if app is offline briefly)
+cache-duration: "12h"
+
+# Auth: deny all by default — app creates per-user topics with tokens
+auth-default-access: "deny-all"
+
+# Attachment storage (optional, for future use)
+attachment-cache-dir: "/var/cache/ntfy/attachments"
+attachment-total-size: "500m"
+attachment-file-size:  "5m"
+
+# Rate limiting — per visitor
+visitor-request-limit-burst:      60
+visitor-request-limit-replenish:  "10s"
+visitor-subscription-limit:       30
+
+# Log level: trace, debug, info, warn, error
+log-level: "info"

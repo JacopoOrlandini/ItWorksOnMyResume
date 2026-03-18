@@ -1,0 +1,31 @@
+version: "3.9"
+
+# Development overrides
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Differences from base:
+#  - Nginx removed (API runs directly via dotnet run)
+#  - Postgres port exposed for GUI clients (TablePlus, DBeaver)
+#  - Redis port exposed for redis-cli / RedisInsight
+#  - No resource limits
+#  - Seq accepts anonymous access (no password)
+
+services:
+
+  postgres:
+    ports:
+      - "5432:5432"   # already in base, explicit here for clarity
+
+  redis:
+    ports:
+      - "6379:6379"
+      - "8001:8001"   # RedisInsight UI (if using redis/redisinsight image)
+
+  seq:
+    environment:
+      ACCEPT_EULA: Y
+      SEQ_FIRSTRUN_ADMINPASSWORDHASH: ${SEQ_ADMIN_PASSWORD_HASH}
+
+  nginx:
+    profiles:
+      - production    # excludes nginx from default dev stack
